@@ -1,0 +1,26 @@
+{
+  "name": "Anya Development",
+  "image": "mcr.microsoft.com/devcontainers/go:dev-1.27-bookworm@sha256:7aa0a0597fa5aae5a9b96f34a82909313c92f31f41330c03e16cb70d92d4d5a9",
+  "features": {},
+  "workspaceFolder": "/workspaces/anya",
+  "remoteUser": "vscode",
+  "forwardPorts": [8080],
+  "containerEnv": {
+    "GOPATH": ""
+  },
+  "remoteEnv": {
+    "PATH": "${containerWorkspaceFolder}/.tools:/home/vscode/go/bin:${containerEnv:PATH}"
+  },
+  "postCreateCommand": "make clean-tools tools",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go"
+      ],
+      "settings": {
+        "go.toolsManagement.autoUpdate": false,
+        "go.formatTool": "gofmt"
+      }
+    }
+  }
+}

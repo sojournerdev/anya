@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: anya
+spec:
+  revisionHistoryLimit: 2
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: anya
+      app.kubernetes.io/component: node-agent
+  minReadySeconds: 10
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: anya
+        app.kubernetes.io/component: node-agent
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 10
+      runtimeClassName: nvidia
+      containers:
+        - name: node-agent
+          image: anya
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: AGENT_PROVIDER
+              value: nvml
+            - name: AGENT_HTTP_ADDRESS
+              value: ":8080"
+            - name: AGENT_REFRESH_INTERVAL
+              value: "5s"
+            - name: AGENT_REFRESH_TIMEOUT
+              value: "2s"
+            - name: AGENT_MAX_STATE_AGE
+              value: "30s"
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: all
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: utility
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ALL]
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 65532
+            runAsGroup: 65532
+            seccompProfile:
+              type: RuntimeDefault

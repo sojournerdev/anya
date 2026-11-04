@@ -1,0 +1,8 @@
+.git
+.tools
+.gitignore
+.dockerignore
+*.log
+bin
+build
+dist
