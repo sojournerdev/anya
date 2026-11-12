@@ -57,7 +57,7 @@ Anya is designed for constrained edge nodes. It is not a scheduler, a GPU config
 | [API Reference](docs/API-REFERENCE.md) | API consumers | Implemented HTTP endpoints, response fields, errors, freshness, and compatibility. |
 | [Operator Guide](docs/OPERATOR-GUIDE.md) | Operators and platform engineers | Kustomize and OCI registry deployment, configuration, health, troubleshooting, upgrades, and security. |
 | [Development Guide](docs/DEVELOPMENT.md) | Contributors | Process and container development workflow. |
-| [Build and Deployment Workflow](docs/RELEASE.md) | Contributors and operators | Local quality checks, container validation, optional edge deployment, and rollback limitations. |
+| [Build and Image Distribution](docs/RELEASE.md) | Contributors and operators | Canonical image validation, GHCR distribution, development tags, and release maturity. |
 | [Security Notes](docs/SECURITY.md) | Operators and security reviewers | Implemented Kubernetes hardening, application boundary, and security limitations. |
 | [Observability Notes](docs/OBSERVABILITY.md) | Operators and developers | Current health, readiness, freshness, logs, and telemetry limitations. |
 

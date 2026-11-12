@@ -39,10 +39,17 @@ ARG IMAGE_SOURCE
 ARG IMAGE_VERSION
 ARG IMAGE_CREATED
 
-LABEL org.opencontainers.image.source=$IMAGE_SOURCE \
-      org.opencontainers.image.revision=$IMAGE_REVISION \
+LABEL org.opencontainers.image.title="Anya" \
+      org.opencontainers.image.description="Publishes validated NVIDIA GPU state over HTTP for GPU-aware workloads" \
+      org.opencontainers.image.url="https://github.com/sojournerdev/anya" \
+      org.opencontainers.image.source=$IMAGE_SOURCE \
+      org.opencontainers.image.documentation="https://github.com/sojournerdev/anya/tree/main/docs" \
       org.opencontainers.image.version=$IMAGE_VERSION \
-      org.opencontainers.image.created=$IMAGE_CREATED
+      org.opencontainers.image.revision=$IMAGE_REVISION \
+      org.opencontainers.image.created=$IMAGE_CREATED \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.authors="sojournerdev" \
+      org.opencontainers.image.vendor="sojournerdev"
 
 COPY --from=build /out/node-agent /node-agent
 

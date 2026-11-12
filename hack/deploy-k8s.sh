@@ -29,10 +29,18 @@ cleanup() {
 render_image_overlay() {
 	image_name=${KUBE_IMAGE%:*}
 	image_tag=${KUBE_IMAGE##*:}
-	image_revision=${image_tag#git-}
+	case "$image_tag" in
+		git-*|sha-*)
+			image_revision=${image_tag#*-}
+			;;
+		*)
+			printf 'KUBE_IMAGE must include a git-<commit> or sha-<commit> tag: %s\n' "$KUBE_IMAGE" >&2
+			return 1
+			;;
+	esac
 	if [ -z "$image_name" ] || [ "$image_name" = "$KUBE_IMAGE" ] ||
-		[ -z "$image_revision" ] || [ "$image_tag" = "$image_revision" ]; then
-		printf 'KUBE_IMAGE must include a name and git-<commit> tag: %s\n' "$KUBE_IMAGE" >&2
+		[ -z "$image_revision" ]; then
+		printf 'KUBE_IMAGE must include a name and commit tag: %s\n' "$KUBE_IMAGE" >&2
 		return 1
 	fi
 

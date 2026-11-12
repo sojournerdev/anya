@@ -4,7 +4,7 @@
 
 Anya is a node agent for a single NVIDIA GPU on an edge node. It publishes validated GPU state over HTTP so trusted consumers can make GPU-aware decisions.
 
-This guide describes the implemented deployment path: a versioned container image published to an OCI registry and a Kustomize overlay applied to Kubernetes.
+This guide describes how operators select, deploy, and verify a development image. Image tags and release maturity are defined in the [Build and Image Distribution](RELEASE.md) document.
 
 ## Ownership Model
 
@@ -14,8 +14,8 @@ Operators own the deployment decision and execution. Operators select image vers
 
 ## Deployment Golden Path
 
-1. Build a versioned image tagged with the current commit.
-2. Publish it to the configured OCI registry.
+1. Select a published `sha-<commit>` image for repeatable validation.
+2. Confirm the cluster can pull the image from GHCR.
 3. Configure the Kubernetes context and image reference.
 4. Apply the Kustomize overlay.
 5. Wait for the DaemonSet rollout.
@@ -41,16 +41,25 @@ The deployment uses `kubectl` and Kustomize. The Makefile publishes images with 
 
 ## Image Selection
 
-Deploy a versioned image tag or digest. Do not use `latest` or a locally built development image for production.
+Use `ghcr.io/sojournerdev/anya:sha-<commit>` for repeatable cluster validation. The `main` tag is a moving development image and should be reserved for disposable environments. Do not use either tag as a stable production release.
 
-The image and Kustomize resources form a compatibility pair. Review the [Build and Deployment Workflow](RELEASE.md) before changing the image or deployment resources.
+Review [Build and Image Distribution](RELEASE.md) for the image policy. The image and Kustomize resources form a compatibility pair.
 
 ## Deployment
 
-The supported host-side workflow is:
+The supported host-side workflow for building and validating a local edge image is:
 
 ```bash
 make edge-up
+```
+
+To deploy a CI-published image, provide its commit-specific tag and run the deployment stages:
+
+```bash
+make edge-deploy \
+  KUBE_IMAGE=ghcr.io/sojournerdev/anya:sha-<commit>
+make edge-rollout
+make edge-verify
 ```
 
 Individual stages are available:
@@ -139,7 +148,7 @@ Treat `availability` and `health` separately. An available snapshot is not neces
 
 Before an upgrade:
 
-1. Review the [Build and Deployment Workflow](RELEASE.md).
+1. Review the [Build and Image Distribution](RELEASE.md).
 2. Confirm the image is available in the registry.
 3. Confirm that the cluster can pull the image.
 4. Review the Kustomize overlay and environment values.
@@ -151,19 +160,9 @@ If the rollout fails, inspect DaemonSet status, pod events, and logs. Restore th
 
 ## Security and Resource Expectations
 
-The production Kustomize resources configure:
-
-- No service-account token unless a documented feature requires one.
-- No privilege escalation.
-- All unnecessary Linux capabilities dropped.
-- A read-only root filesystem.
-- A non-root user.
-- The runtime default seccomp profile.
-- Bounded CPU and memory requests and limits.
-
 The application API has no authentication or authorization layer. The repository does not ship a NetworkPolicy; operators must provide network isolation if required.
 
-See the [Security Notes](SECURITY.md) for implemented hardening, application boundaries, and security limitations.
+See the [Security Notes](SECURITY.md) for the Kubernetes hardening controls and security limitations.
 
 ## Observability
 
@@ -172,7 +171,4 @@ See the [Observability Notes](OBSERVABILITY.md) for current health, readiness, f
 ## Related Guides
 
 - [API Reference](API-REFERENCE.md): consumer-facing HTTP contract.
-- [Build and Deployment Workflow](RELEASE.md): local quality checks, container validation, edge deployment, and rollback limitations.
-- [Security Notes](SECURITY.md): implemented security controls and trust boundaries.
-- [Observability Notes](OBSERVABILITY.md): current operational signals and telemetry limitations.
-
+- [Build and Image Distribution](RELEASE.md): image validation, GHCR distribution, development tags, and release maturity.

@@ -68,7 +68,7 @@ Use these sources of truth:
 - `README.md`: project context and navigation.
 - `docs/DEVELOPMENT.md`: local development workflow.
 - `docs/API-REFERENCE.md`: HTTP contract for consumers.
-- `docs/OPERATOR-GUIDE.md`: deployment and production operations.
+- `docs/OPERATOR-GUIDE.md`: deployment and operator procedures.
 - `CONTRIBUTING.md`: repository contribution workflow.
 
 ## Pull Request Expectations
