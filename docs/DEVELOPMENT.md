@@ -17,7 +17,7 @@ Follow the shortest validation path that matches the change:
    ```
 
    This requires no GPU, image, registry, or Kubernetes cluster.
-4. **Validate the production image when container behavior is affected:**
+4. **Validate the container image when container behavior is affected:**
 
    ```bash
    make dev-container-smoke
@@ -40,13 +40,15 @@ Follow the shortest validation path that matches the change:
 
 ## Edge Deployment Workflow
 
-The edge workflow is optional local validation. It publishes a versioned image tagged with the current commit to the configured OCI registry, deploys the Kustomize overlay to an operator-selected Kubernetes cluster, waits for rollout, and verifies the service:
+The edge workflow is optional local or operator-managed validation. It builds a commit-tagged image, publishes it to the configured OCI registry, deploys the Kustomize overlay to a selected Kubernetes cluster, waits for rollout, and verifies the service:
 
 ```bash
 make edge-up
 ```
 
 Use this only when the change requires edge or Kubernetes validation. The development host must provide Docker, `kubectl`, access to the configured OCI registry, and a configured Kubernetes context and image repository in `.env`. The cluster must be able to pull the published image and satisfy the runtime requirements in [`docs/OPERATOR-GUIDE.md`](OPERATOR-GUIDE.md).
+
+The CI-published GHCR image policy and development tag meanings are defined in [`docs/RELEASE.md`](RELEASE.md). This local workflow is not a stable release or promotion process.
 
 ## Replay Provider
 
@@ -71,7 +73,7 @@ Replay does not validate NVML integration, NVIDIA drivers, container GPU access,
 
 ## Container Smoke Test
 
-The container smoke test checks that the production image:
+The container smoke test checks that the container image:
 
 - Starts without GPU access.
 - Serves the readiness and health endpoints.

@@ -22,9 +22,9 @@ The Kubernetes DaemonSet configures Anya with:
 
 ## Image and Build Security
 
-The default edge repository is `ghcr.io/sojournerdev/anya`. The local edge workflow publishes an image tagged `git-<commit>` and deploys that image through a rendered Kustomize overlay. The base container images are pinned by digest.
+Development images are published to GHCR by GitHub Actions after the CI validation jobs pass on `main`. The image tags and their stability guarantees are defined in the [Build and Image Distribution](RELEASE.md) document.
 
-CI runs `govulncheck` against Go dependencies. The repository does not currently generate or verify image signatures, SBOMs, provenance attestations, or registry image-scan results.
+The base container images are pinned by digest. CI runs `govulncheck` against Go dependencies. The repository does not currently generate or verify image signatures, SBOMs, provenance attestations, or registry image-scan results.
 
 Operators are responsible for registry access, image-pull permissions, and any admission policy that requires signed or digest-pinned images.
 
