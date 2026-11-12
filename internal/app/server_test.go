@@ -15,12 +15,12 @@ import (
 )
 
 func TestNewServerRejectsNilAgent(t *testing.T) {
-	if _, err := app.NewServer(nil, time.Second); err == nil {
+	if _, err := app.NewServer(nil, agent.Policy{MaxStateAge: time.Second}); err == nil {
 		t.Fatal("NewServer() accepted a nil agent")
 	}
 }
 
-func TestServerHealthEndpointReturnsJSONContract(t *testing.T) {
+func TestServerHealthEndpointReturnsOKJSON(t *testing.T) {
 	_, server := newServerWithFakeAgent(t)
 
 	response := serveRequest(server, http.MethodGet, "/healthz")
@@ -38,7 +38,7 @@ func TestServerHealthEndpointReturnsJSONContract(t *testing.T) {
 	}
 }
 
-func TestServerHealthEndpointRejectsUnsupportedMethod(t *testing.T) {
+func TestServerHealthEndpointReturnsMethodNotAllowed(t *testing.T) {
 	_, server := newServerWithFakeAgent(t)
 
 	response := serveRequest(server, http.MethodPost, "/healthz")
@@ -104,8 +104,9 @@ func TestServerReadinessEndpointReturnsOKAfterRefresh(t *testing.T) {
 		t.Fatalf("readiness status = %d, want %d", response.Code, http.StatusOK)
 	}
 }
+
 func TestServerReadinessEndpointReturnsUnavailableForStaleState(t *testing.T) {
-	nodeAgent, server := newServerWithMaxAge(t, time.Nanosecond)
+	nodeAgent, server := newServerWithMaxStateAge(t, time.Nanosecond)
 	if err := nodeAgent.Refresh(context.Background()); err != nil {
 		t.Fatalf("Refresh() error = %v", err)
 	}
@@ -151,16 +152,16 @@ func TestServerStateEndpointReturnsPublishedState(t *testing.T) {
 }
 
 func newServerWithFakeAgent(t *testing.T) (*agent.Agent, *http.Server) {
-	return newServerWithMaxAge(t, time.Second)
+	return newServerWithMaxStateAge(t, time.Second)
 }
 
-func newServerWithMaxAge(t *testing.T, maxAge time.Duration) (*agent.Agent, *http.Server) {
+func newServerWithMaxStateAge(t *testing.T, maxStateAge time.Duration) (*agent.Agent, *http.Server) {
 	t.Helper()
 	nodeAgent, err := agent.New(fake.New(fake.Sample{Observation: validGPUObservation()}))
 	if err != nil {
 		t.Fatalf("agent.New() error = %v", err)
 	}
-	server, err := app.NewServer(nodeAgent, maxAge)
+	server, err := app.NewServer(nodeAgent, agent.Policy{MaxStateAge: maxStateAge})
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}

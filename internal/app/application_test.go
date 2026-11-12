@@ -27,7 +27,7 @@ func TestNewRejectsInvalidApplicationConfiguration(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			if _, err := app.New(
 				app.Dependencies{Agent: test.nodeAgent},
-				app.Settings{RefreshInterval: test.interval, RefreshTimeout: test.timeout, ListenAddress: ":0"},
+				app.Settings{RefreshInterval: test.interval, RefreshTimeout: test.timeout, ListenPort: 0},
 			); err == nil {
 				t.Fatal("New() succeeded, want error")
 			}
@@ -122,6 +122,7 @@ func TestApplicationRunRetriesAfterInitialRefreshFailure(t *testing.T) {
 		t.Fatal("Run() did not stop after cancellation")
 	}
 }
+
 func TestApplicationRunStopsBeforeInitialRefreshWhenCanceled(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
@@ -158,7 +159,7 @@ func TestApplicationRunStopsWhileWaitingWhenCanceled(t *testing.T) {
 
 func newTestApplication(t *testing.T, nodeAgent *agent.Agent, refreshInterval time.Duration) *app.Application {
 	t.Helper()
-	httpServer, err := app.NewServer(nodeAgent, time.Second)
+	httpServer, err := app.NewServer(nodeAgent, agent.Policy{MaxStateAge: time.Second})
 	if err != nil {
 		t.Fatalf("NewServer() error = %v", err)
 	}
@@ -170,7 +171,7 @@ func newTestApplication(t *testing.T, nodeAgent *agent.Agent, refreshInterval ti
 		app.Settings{
 			RefreshInterval: refreshInterval,
 			RefreshTimeout:  time.Millisecond,
-			ListenAddress:   ":0",
+			ListenPort:      0,
 		},
 	)
 	if err != nil {
@@ -178,6 +179,7 @@ func newTestApplication(t *testing.T, nodeAgent *agent.Agent, refreshInterval ti
 	}
 	return application
 }
+
 func newTestAgent(t *testing.T) *agent.Agent {
 	t.Helper()
 	nodeAgent, err := agent.New(fake.New(fake.Sample{

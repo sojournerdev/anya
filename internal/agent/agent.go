@@ -73,13 +73,12 @@ type IdentityView struct {
 // Evaluation is the decision produced by applying Policy to the latest published state.
 type Evaluation struct {
 	state  state
-	fresh  bool
 	reason Reason
 }
 
 // IsAvailable reports whether the evaluation contains a fresh validated snapshot.
 func (e Evaluation) IsAvailable() bool {
-	return e.fresh && e.state.hasSnapshot
+	return e.reason == ReasonFreshSnapshot
 }
 
 // Health returns the health assessment included in the evaluation.
@@ -108,12 +107,12 @@ func (e Evaluation) Snapshot() (SnapshotView, bool) {
 // PublishedAt returns when the agent accepted the latest snapshot for publication.
 func (e Evaluation) PublishedAt() time.Time { return e.state.publishedAt }
 
-// New creates an agent that obtains observations from source.
-func New(source provider.Provider) (*Agent, error) {
-	if source == nil {
+// New creates an agent that obtains observations from an observation provider.
+func New(observationProvider provider.Provider) (*Agent, error) {
+	if observationProvider == nil {
 		return nil, errors.New("agent: provider is required")
 	}
-	return &Agent{provider: source}, nil
+	return &Agent{provider: observationProvider}, nil
 }
 
 // Refresh obtains one provider observation, validates it, and publishes it when newer.
@@ -159,11 +158,7 @@ func (a *Agent) Evaluate(now time.Time, policy Policy) Evaluation {
 	return evaluatePublishedState(publishedState, now, policy)
 }
 
-func evaluatePublishedState(
-	publishedState state,
-	now time.Time,
-	policy Policy,
-) Evaluation {
+func evaluatePublishedState(publishedState state, now time.Time, policy Policy) Evaluation {
 	if !publishedState.hasSnapshot {
 		return Evaluation{
 			state:  publishedState.withUnknownHealth(),
@@ -178,7 +173,6 @@ func evaluatePublishedState(
 	}
 	return Evaluation{
 		state:  publishedState,
-		fresh:  true,
 		reason: ReasonFreshSnapshot,
 	}
 }

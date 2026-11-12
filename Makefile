@@ -68,28 +68,30 @@ lint: tools ## Run golangci-lint
 
 ci: fmt-check mod-tidy-check mod-verify build vet race vuln lint ## Run the complete CI quality gate
 
-.PHONY: dev-container-build dev-container-run dev-container-smoke
+.PHONY: dev-run dev-container-build dev-container-run dev-container-smoke edge-build edge-publish edge-deploy edge-rollout edge-verify edge-up
 
 DEV_IMAGE ?= anya:dev
 DEV_PORT ?= 8080
-# Port 0 lets Docker choose an available host port for smoke tests.
 DEV_SMOKE_PORT ?= 0
-
+DEV_PROVIDER ?= replay
 ##@ Development
 
-dev-run: ## Run Anya locally with the replay provider
-	AGENT_PROVIDER=replay go run ./cmd/node-agent
+dev-run: ## Run Anya locally with the development provider
+	AGENT_PROVIDER="$(DEV_PROVIDER)" go run ./cmd/node-agent
 
-dev-container-build: ## Build the local replay container
-	docker buildx build --file Containerfile --tag "$(DEV_IMAGE)" --load .
+dev-container-build: ## Build the local development container
+	IMAGE="$(DEV_IMAGE)" \
+		./hack/build-container.sh
 
-dev-container-run: dev-container-build ## Run the local replay container
-	docker run --rm --publish "$(DEV_PORT):8080" --env AGENT_PROVIDER=replay "$(DEV_IMAGE)"
+dev-container-run: dev-container-build ## Run the local development container
+	docker run --rm --publish "$(DEV_PORT):8080" \
+		--env AGENT_PROVIDER="$(DEV_PROVIDER)" \
+		"$(DEV_IMAGE)"
 
 dev-container-smoke: dev-container-build ## Run the local container smoke test
 	./hack/smoke-container.sh "$(DEV_IMAGE)" "$(DEV_SMOKE_PORT)"
 
-.PHONY: edge-image-build edge-image-publish edge-deploy edge-rollout edge-verify edge-up
+.PHONY: edge-build edge-publish edge-deploy edge-rollout edge-verify edge-up
 
 GIT_COMMIT := $(shell git rev-parse HEAD 2>/dev/null)
 EDGE_IMAGE_REPOSITORY ?= ghcr.io/sojournerdev/anya
@@ -106,12 +108,13 @@ EDGE_READY_TIMEOUT_SECONDS ?= 30
 
 ##@ Edge Deployment
 
-edge-image-build: ## Build the immutable edge image
-	EDGE_IMAGE="$(EDGE_IMAGE)" \
-	EDGE_TARGET_PLATFORM="$(EDGE_TARGET_PLATFORM)" \
-		./hack/build-image.sh
+edge-build: ## Build the versioned edge image
+	IMAGE="$(EDGE_IMAGE)" \
+	TARGET_PLATFORM="$(EDGE_TARGET_PLATFORM)" \
+	IMAGE_REVISION="$(GIT_COMMIT)" \
+		./hack/build-container.sh
 
-edge-image-publish: edge-image-build ## Push the immutable edge image to its OCI registry
+edge-publish: edge-build ## Push the versioned edge image to its OCI registry
 	docker push "$(EDGE_IMAGE)"
 
 edge-deploy: ## Apply the edge Kubernetes resources
@@ -135,7 +138,7 @@ edge-verify: ## Verify the edge deployment
 
 edge-up: ## Build, publish, deploy, and verify the edge workflow
 	@set -eu; \
-	$(MAKE) --no-print-directory edge-image-publish; \
+	$(MAKE) --no-print-directory edge-publish; \
 	$(MAKE) --no-print-directory edge-deploy; \
 	$(MAKE) --no-print-directory edge-rollout; \
 	$(MAKE) --no-print-directory edge-verify

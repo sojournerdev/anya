@@ -1,39 +1,37 @@
-# Security Guide
+# Security Notes
 
 ## Security Boundary
 
-Anya exposes a read-only decision API for trusted cluster consumers. The API does not provide authentication or authorization in the application process.
+Anya exposes a read-only decision API for trusted cluster consumers. The application does not provide authentication or authorization.
 
-The deployment restricts network access to required consumers and health probes. A NetworkPolicy or equivalent cluster control defines that boundary.
+The repository does not ship a `NetworkPolicy`. Operators must provide network isolation if the service requires restricted access. Do not expose the service publicly without an approved authentication and transport-security design.
+
+TLS termination, if required, occurs at an approved cluster boundary. The application process does not terminate TLS.
 
 ## Container Security
 
-The deployment runs Anya with:
+The Kubernetes DaemonSet configures Anya with:
 
-- No service-account token unless a documented feature requires one.
+- No service-account token.
 - No privilege escalation.
-- All unnecessary Linux capabilities dropped.
+- All Linux capabilities dropped.
 - A read-only root filesystem.
-- A non-root user.
-- The runtime default seccomp profile.
-- Bounded CPU and memory resources.
+- A non-root user (`65532:65532`).
+- The runtime-default seccomp profile.
+- Bounded CPU and memory requests and limits.
 
-## Image Security
+## Image and Build Security
 
-Production images come from GHCR and are referenced by immutable tag or digest. The release process produces an SBOM, vulnerability results, build provenance, and a signature.
+The default edge repository is `ghcr.io/sojournerdev/anya`. The local edge workflow publishes an image tagged `git-<commit>` and deploys that image through a rendered Kustomize overlay. The base container images are pinned by digest.
 
-The cluster verifies image-pull permissions. Signature verification is part of the deployment trust model when the cluster policy supports it.
+CI runs `govulncheck` against Go dependencies. The repository does not currently generate or verify image signatures, SBOMs, provenance attestations, or registry image-scan results.
 
-## Network Exposure
-
-The HTTP service is reachable only by the consumers and probes that require it. Operators do not expose the service publicly without an approved authentication and transport-security design.
-
-TLS termination, if required, occurs at an approved cluster boundary. The API contract does not assume that the application process terminates TLS.
+Operators are responsible for registry access, image-pull permissions, and any admission policy that requires signed or digest-pinned images.
 
 ## Configuration and Secrets
 
-Configuration values are non-secret unless explicitly documented otherwise. Registry credentials remain in Kubernetes secrets or the configured image-pull mechanism and do not appear in Kustomize resources committed to source control.
+The documented configuration values are non-secret. Registry credentials belong in the operator's Kubernetes secret or image-pull mechanism and must not be committed to Kustomize resources or source control.
 
 ## Security Changes
 
-Changes to container privileges, network access, image provenance, authentication, authorization, or secret handling require a security review and an update to this guide.
+Changes to container privileges, network access, image provenance, authentication, authorization, or secret handling require a security review and an update to this document.

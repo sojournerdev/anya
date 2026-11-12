@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func TestRefreshPublishesLatestValidState(t *testing.T) {
+func TestRefreshPublishesNewerStateAndPreservesLastStateAfterFailure(t *testing.T) {
 	source := fake.New(
 		fake.Sample{Observation: validObservation(1)},
 		fake.Sample{Observation: validObservation(2)},
@@ -22,8 +22,12 @@ func TestRefreshPublishesLatestValidState(t *testing.T) {
 		t.Fatalf("agent.New() error = %v", err)
 	}
 
-	if _, ok := service.Evaluate(time.Now(), agent.Policy{MaxStateAge: time.Hour}).Snapshot(); ok {
+	initial := service.Evaluate(time.Now(), agent.Policy{MaxStateAge: time.Hour})
+	if _, ok := initial.Snapshot(); ok {
 		t.Fatal("Evaluate().Snapshot() reported state before the first successful refresh")
+	}
+	if initial.IsAvailable() || initial.Reason() != agent.ReasonNoSnapshot {
+		t.Fatalf("initial evaluation = (available=%t, reason=%q), want unavailable/no_snapshot", initial.IsAvailable(), initial.Reason())
 	}
 	if err := service.Refresh(context.Background()); err != nil {
 		t.Fatalf("first Refresh() error = %v", err)
@@ -37,8 +41,8 @@ func TestRefreshPublishesLatestValidState(t *testing.T) {
 	if state.PublishedAt().IsZero() {
 		t.Fatal("first state has zero update time")
 	}
-	if !state.IsAvailable() {
-		t.Fatal("evaluation is not available for a fresh validated snapshot")
+	if !state.IsAvailable() || state.Reason() != agent.ReasonFreshSnapshot {
+		t.Fatalf("fresh evaluation = (available=%t, reason=%q), want available/fresh_snapshot", state.IsAvailable(), state.Reason())
 	}
 	if state.Health().Status != health.StatusHealthy {
 		t.Fatalf("health = %v, want %v", state.Health().Status, health.StatusHealthy)

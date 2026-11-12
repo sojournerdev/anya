@@ -41,7 +41,8 @@ func run(ctx context.Context) error {
 		return fmt.Errorf("create agent: %w", err)
 	}
 
-	httpServer, err := app.NewServer(nodeAgent, settings.Refresh.MaxAge)
+	policy := agent.Policy{MaxStateAge: settings.Refresh.MaxAge}
+	httpServer, err := app.NewServer(nodeAgent, policy)
 	if err != nil {
 		_ = nodeAgent.Close()
 		return fmt.Errorf("create HTTP server: %w", err)
@@ -53,7 +54,7 @@ func run(ctx context.Context) error {
 		app.Settings{
 			RefreshInterval: settings.Refresh.Interval,
 			RefreshTimeout:  settings.Refresh.Timeout,
-			ListenAddress:   settings.HTTP.ListenAddress},
+			ListenPort:      settings.HTTP.Port},
 	)
 	if err != nil {
 		_ = nodeAgent.Close()

@@ -8,6 +8,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/sojournerdev/anya/internal/agent"
@@ -25,7 +26,7 @@ type Dependencies struct {
 type Settings struct {
 	RefreshInterval time.Duration
 	RefreshTimeout  time.Duration
-	ListenAddress   string
+	ListenPort      int
 }
 
 // Application owns refresh scheduling and process lifecycle.
@@ -34,7 +35,7 @@ type Application struct {
 	refreshInterval time.Duration
 	refreshTimeout  time.Duration
 	httpServer      *http.Server
-	listenAddress   string
+	listenPort      int
 }
 
 // New creates an application from constructed dependencies and validated settings.
@@ -54,15 +55,15 @@ func New(dependencies Dependencies, settings Settings) (*Application, error) {
 	if settings.RefreshTimeout > settings.RefreshInterval {
 		return nil, errors.New("app: refresh timeout must not exceed refresh interval")
 	}
-	if settings.ListenAddress == "" {
-		return nil, errors.New("app: HTTP listen address is required")
+	if settings.ListenPort < 0 || settings.ListenPort > 65535 {
+		return nil, errors.New("app: HTTP port must be between 0 and 65535")
 	}
 	return &Application{
 		nodeAgent:       dependencies.Agent,
 		refreshInterval: settings.RefreshInterval,
 		refreshTimeout:  settings.RefreshTimeout,
 		httpServer:      dependencies.HTTPServer,
-		listenAddress:   settings.ListenAddress,
+		listenPort:      settings.ListenPort,
 	}, nil
 }
 
@@ -86,9 +87,10 @@ func (a *Application) Run(ctx context.Context) error {
 }
 
 func (a *Application) openHTTPListener() (net.Listener, error) {
-	listener, err := net.Listen("tcp", a.listenAddress)
+	address := net.JoinHostPort("", strconv.Itoa(a.listenPort))
+	listener, err := net.Listen("tcp4", address)
 	if err != nil {
-		return nil, fmt.Errorf("listen for HTTP server on %q: %w", a.listenAddress, err)
+		return nil, fmt.Errorf("listen for HTTP server on %q: %w", address, err)
 	}
 	log.Printf("HTTP server listening on %s", listener.Addr())
 	return listener, nil

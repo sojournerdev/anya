@@ -1,18 +1,19 @@
 #!/bin/sh
-set -eu
+set -u
 
 : "${KUBECTL_BIN:=kubectl}"
-: "${KUBE_CONTEXT:?set KUBE_CONTEXT to the target Kubernetes context}"
-: "${KUBE_IMAGE:?set KUBE_IMAGE to the immutable image to deploy}"
+KUBE_CONTEXT=${KUBE_CONTEXT:-}
+KUBE_IMAGE=${KUBE_IMAGE:-}
 : "${KUBE_NAMESPACE:=anya-system}"
-
 rendered_overlay_directory=''
 
 require_command() {
-	command -v "$1" >/dev/null 2>&1 || {
-		printf 'required command not found: %s\n' "$1" >&2
-		exit 127
-	}
+	if command -v "$1" >/dev/null 2>&1; then
+		return 0
+	fi
+
+	printf 'required command not found: %s\n' "$1" >&2
+	return 127
 }
 
 run_kubectl() {
@@ -21,7 +22,7 @@ run_kubectl() {
 
 cleanup() {
 	if [ -n "$rendered_overlay_directory" ]; then
-		rm -rf "$rendered_overlay_directory"
+		rm -rf "$rendered_overlay_directory" || :
 	fi
 }
 
@@ -36,8 +37,13 @@ render_image_overlay() {
 	fi
 
 	rendered_overlay_directory="deploy/k8s/overlays/.anya-render-$$"
-	mkdir "$rendered_overlay_directory"
-	cat >"$rendered_overlay_directory/kustomization.yaml" <<EOF
+	if mkdir "$rendered_overlay_directory"; then
+		:
+	else
+		return $?
+	fi
+
+	if cat >"$rendered_overlay_directory/kustomization.yaml" <<EOF
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -49,6 +55,12 @@ images:
     newName: $image_name
     newTag: $image_tag
 EOF
+	then
+		return 0
+	else
+		status=$?
+		return "$status"
+	fi
 }
 
 apply_manifests() {
@@ -60,10 +72,16 @@ apply_manifests() {
 }
 
 main() {
-	require_command "$KUBECTL_BIN"
-	trap cleanup EXIT INT TERM
-	render_image_overlay
-	apply_manifests
+	[ -n "$KUBE_CONTEXT" ] && [ -n "$KUBE_IMAGE" ] || {
+		printf '%s\n' 'KUBE_CONTEXT and KUBE_IMAGE must be set' >&2
+		return 2
+	}
+
+	require_command "$KUBECTL_BIN" || return $?
+	trap cleanup 0 1 2 15
+	render_image_overlay || return $?
+	apply_manifests || return $?
+	return 0
 }
 
 main "$@"

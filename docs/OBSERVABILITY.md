@@ -1,8 +1,8 @@
-# Observability Guide
+# Observability Notes
 
 ## Purpose
 
-Observability shows whether Anya is running, whether it has fresh GPU state, and why a refresh or state transition failed.
+The current signals show whether Anya is running, whether it has fresh GPU state, and why a refresh or state transition failed.
 
 ## Current Signals
 
@@ -10,9 +10,10 @@ The current build provides:
 
 - Kubernetes liveness through `/healthz`.
 - Kubernetes readiness through `/readyz`.
-- State publication time through `published_at` and state freshness through `AGENT_MAX_STATE_AGE`.
+- State publication time through `published_at`.
+- State freshness controlled by `AGENT_MAX_STATE_AGE`.
 - Refresh failure messages in process logs.
-- Pod restart and rollout signals from Kubernetes.
+- Pod restart and rollout status through Kubernetes.
 
 The application does not currently expose a Prometheus `/metrics` endpoint or OpenTelemetry exporters.
 
@@ -27,34 +28,22 @@ A failed observation does not replace the last valid snapshot. Anya continues re
 
 ## Logs
 
-Current refresh failures are logged without credentials or registry data. Future structured logging should use bounded fields such as operation, result, and error category. Raw provider errors must not become metric labels.
+Refresh failures are logged without credentials or registry data. Future structured logging should use bounded fields such as operation, result, and error category. Raw provider errors must not become metric labels.
 
-## Planned Metrics
+## Operator Monitoring
 
-When metrics are added, the initial bounded signal set should cover:
+The repository does not ship dashboards, alert rules, or monitoring integrations. Operators may monitor the following conditions using their own Kubernetes and logging systems:
 
-- Refresh attempts and failures.
-- Refresh duration.
-- Current state age.
-- Readiness state.
-- HTTP request count, duration, and status class.
-
-Metric labels must remain bounded. Do not use GPU identifiers, sequence numbers, raw error messages, timestamps, or arbitrary user-provided values as labels.
-
-## OpenTelemetry
-
-OpenTelemetry is not currently implemented. If added, the implementation must define exporter configuration, collector destination, sampling, resource cost, signal ownership, and failure behavior before operators depend on it.
-
-## Alerts
-
-The current operational alert targets are:
-
-- Unavailable or unready pods.
-- State age above the allowed threshold.
-- Repeated refresh failures visible in logs.
+- Unready pods.
+- State age exceeding the configured limit.
+- Repeated refresh failures.
 - Restart loops.
 - Failed image pulls.
 - Failed rollouts.
 - Provider initialization failures.
 
-Alert thresholds must match the documented freshness and availability objectives.
+Thresholds and objectives are operator-defined; no availability or alerting objective is currently established by the repository.
+
+## Future Telemetry
+
+Prometheus metrics and OpenTelemetry are not currently implemented. Any future implementation must define exporter configuration, collector destination, sampling, resource cost, signal ownership, failure behavior, and bounded labels before operators depend on it.

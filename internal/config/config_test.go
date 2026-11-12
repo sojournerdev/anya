@@ -25,7 +25,7 @@ func TestLoad(t *testing.T) {
 					Timeout:  config.DefaultRefreshTimeout,
 					MaxAge:   config.DefaultMaxStateAge,
 				},
-				HTTP:     config.HTTPConfig{ListenAddress: config.DefaultHTTPListenAddress},
+				HTTP:     config.HTTPConfig{Port: config.DefaultHTTPPort},
 				Provider: "nvml",
 			},
 		},
@@ -35,7 +35,7 @@ func TestLoad(t *testing.T) {
 				"AGENT_REFRESH_INTERVAL": "2s",
 				"AGENT_REFRESH_TIMEOUT":  "1s",
 				"AGENT_MAX_STATE_AGE":    "20s",
-				"AGENT_HTTP_ADDRESS":     ":9090",
+				"AGENT_HTTP_PORT":        "9090",
 			},
 			wantConfig: config.Config{
 				Refresh: config.RefreshConfig{
@@ -43,7 +43,7 @@ func TestLoad(t *testing.T) {
 					Timeout:  time.Second,
 					MaxAge:   20 * time.Second,
 				},
-				HTTP:     config.HTTPConfig{ListenAddress: ":9090"},
+				HTTP:     config.HTTPConfig{Port: 9090},
 				Provider: "nvml",
 			},
 		},
@@ -105,16 +105,16 @@ func TestLoad(t *testing.T) {
 			wantErrorText: "AGENT_PROVIDER",
 		},
 		{
-			name: "invalid HTTP address",
+			name: "invalid HTTP port",
 			environment: map[string]string{
-				"AGENT_HTTP_ADDRESS": "localhost",
+				"AGENT_HTTP_PORT": "invalid",
 			},
-			wantErrorText: "AGENT_HTTP_ADDRESS",
+			wantErrorText: "AGENT_HTTP_PORT",
 		},
 		{
 			name: "HTTP port outside range",
 			environment: map[string]string{
-				"AGENT_HTTP_ADDRESS": ":70000",
+				"AGENT_HTTP_PORT": "70000",
 			},
 			wantErrorText: "between 1 and 65535",
 		},
@@ -154,7 +154,7 @@ func setEnvironment(t *testing.T, values map[string]string) {
 		"AGENT_REFRESH_INTERVAL",
 		"AGENT_REFRESH_TIMEOUT",
 		"AGENT_MAX_STATE_AGE",
-		"AGENT_HTTP_ADDRESS",
+		"AGENT_HTTP_PORT",
 		"AGENT_PROVIDER",
 	} {
 		if value, configured := values[name]; configured {
