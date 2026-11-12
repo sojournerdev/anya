@@ -22,7 +22,7 @@ TOOL_INSTALL_DIR := $(TOOLS_DIR)/.install
 help: ## Show available targets
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage:\n  make \033[36m<target>\033[0m\n"} /^##@/ {printf "\n\033[1m%s\033[0m\n", substr($$0, 5)} /^[a-zA-Z0-9_%-]+:.*##/ {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
-.PHONY: build test race vet fmt fmt-check fix
+.PHONY: build test race tests vet fmt fmt-check fix
 
 ##@ Go
 
@@ -47,7 +47,7 @@ fmt-check: ## Verify Go source formatting
 fix: ## Apply standard Go fixes
 	go fix ./...
 
-.PHONY: mod-tidy mod-tidy-check mod-verify vuln lint ci
+.PHONY: mod-tidy mod-tidy-check mod-verify vuln lint static-checks security-checks ci
 
 ##@ Quality
 
@@ -66,7 +66,13 @@ vuln: tools ## Run govulncheck
 lint: tools ## Run golangci-lint
 	$(GOLANGCI_LINT) run
 
-ci: fmt-check mod-tidy-check mod-verify build vet race vuln lint ## Run the complete CI quality gate
+static-checks: fmt-check mod-tidy-check mod-verify vet lint ## Run formatting, dependency, vet, and lint checks
+
+tests: test race ## Run unit and race tests
+
+security-checks: vuln ## Run dependency security checks
+
+ci: static-checks tests build security-checks ## Run the complete CI quality gate
 
 .PHONY: dev-run dev-container-build dev-container-run dev-container-smoke edge-build edge-publish edge-deploy edge-rollout edge-verify edge-up
 
@@ -89,7 +95,8 @@ dev-container-run: dev-container-build ## Run the local development container
 		"$(DEV_IMAGE)"
 
 dev-container-smoke: dev-container-build ## Run the local container smoke test
-	./hack/smoke-container.sh "$(DEV_IMAGE)" "$(DEV_SMOKE_PORT)"
+	AGENT_PROVIDER="$(DEV_PROVIDER)" \
+		./hack/smoke-container.sh "$(DEV_IMAGE)" "$(DEV_SMOKE_PORT)"
 
 .PHONY: edge-build edge-publish edge-deploy edge-rollout edge-verify edge-up
 

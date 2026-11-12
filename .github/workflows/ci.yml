@@ -15,8 +15,9 @@ permissions:
   contents: read
 
 jobs:
-  quality:
-    runs-on: ubuntu-latest
+  code-quality:
+    name: Validate code quality
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -27,5 +28,123 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run quality gate
-        run: make ci
+      - name: Run static checks
+        run: make static-checks
+
+  unit-tests:
+    name: Run unit tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run unit tests
+        run: make test
+
+  race-tests:
+    name: Run race tests
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run race tests
+        run: make race
+
+  build-go:
+    name: Build Go packages
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build packages
+        run: make build
+
+  scan-dependencies:
+    name: Scan dependencies
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run dependency security checks
+        run: make security-checks
+
+  test-container:
+    name: Test container behavior
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run container smoke test
+        run: make dev-container-smoke
+
+  publish-main-image:
+    name: Publish main image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - code-quality
+      - unit-tests
+      - race-tests
+      - build-go
+      - scan-dependencies
+      - test-container
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out tested commit
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Containerfile
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ghcr.io/sojournerdev/anya:main
+            ghcr.io/sojournerdev/anya:sha-${{ github.sha }}
+          build-args: |
+            IMAGE_REVISION=${{ github.sha }}
+            IMAGE_SOURCE=https://github.com/${{ github.repository }}
+            IMAGE_VERSION=main
+            IMAGE_CREATED=${{ github.event.head_commit.timestamp }}
