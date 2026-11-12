@@ -4,7 +4,7 @@
 
 Anya is a node agent for a single NVIDIA GPU on an edge node. It publishes validated GPU state over HTTP so trusted consumers can make GPU-aware decisions.
 
-This guide describes the implemented deployment path: an immutable container image published to an OCI registry and a Kustomize overlay applied to Kubernetes.
+This guide describes the implemented deployment path: a versioned container image published to an OCI registry and a Kustomize overlay applied to Kubernetes.
 
 ## Ownership Model
 
@@ -14,7 +14,7 @@ Operators own the deployment decision and execution. Operators select image vers
 
 ## Deployment Golden Path
 
-1. Build an immutable image.
+1. Build a versioned image tagged with the current commit.
 2. Publish it to the configured OCI registry.
 3. Configure the Kubernetes context and image reference.
 4. Apply the Kustomize overlay.
@@ -41,9 +41,9 @@ The deployment uses `kubectl` and Kustomize. The Makefile publishes images with 
 
 ## Image Selection
 
-Deploy an immutable image tag or digest. Do not use `latest` or a locally built development image for production.
+Deploy a versioned image tag or digest. Do not use `latest` or a locally built development image for production.
 
-The image and Kustomize resources form a compatibility pair. Review the release notes before changing the image or deployment resources.
+The image and Kustomize resources form a compatibility pair. Review the [Build and Deployment Workflow](RELEASE.md) before changing the image or deployment resources.
 
 ## Deployment
 
@@ -56,8 +56,8 @@ make edge-up
 Individual stages are available:
 
 ```bash
-make edge-image-build
-make edge-image-publish
+make edge-build
+make edge-publish
 make edge-deploy
 make edge-rollout
 make edge-verify
@@ -77,7 +77,7 @@ The application configuration includes:
 | Setting | Default | Purpose |
 | --- | --- | --- |
 | `AGENT_PROVIDER` | `nvml` | Selects the production NVML provider. |
-| `AGENT_HTTP_ADDRESS` | `:8080` | TCP address used by the HTTP server. |
+| `AGENT_HTTP_PORT` | `8080` | TCP IPv4 port used by the HTTP server. The agent listens on all pod/container interfaces. |
 | `AGENT_REFRESH_INTERVAL` | `5s` | Time between observations after the initial observation. |
 | `AGENT_REFRESH_TIMEOUT` | `2s` | Maximum time allowed for one provider observation. Must not exceed the refresh interval. |
 | `AGENT_MAX_STATE_AGE` | `30s` | Maximum age of a published snapshot before readiness fails. Must be at least the refresh interval. |
@@ -139,7 +139,7 @@ Treat `availability` and `health` separately. An available snapshot is not neces
 
 Before an upgrade:
 
-1. Review the release notes.
+1. Review the [Build and Deployment Workflow](RELEASE.md).
 2. Confirm the image is available in the registry.
 3. Confirm that the cluster can pull the image.
 4. Review the Kustomize overlay and environment values.
@@ -160,19 +160,19 @@ The production Kustomize resources configure:
 - A non-root user.
 - The runtime default seccomp profile.
 - Bounded CPU and memory requests and limits.
-- Restricted service access for required consumers and probes.
 
-The application API has no authentication or authorization layer. The cluster network boundary protects access to the service.
+The application API has no authentication or authorization layer. The repository does not ship a NetworkPolicy; operators must provide network isolation if required.
 
-See the [Security Guide](SECURITY.md) for image trust, network policy, and secret handling.
+See the [Security Notes](SECURITY.md) for implemented hardening, application boundaries, and security limitations.
 
 ## Observability
 
-See the [Observability Guide](OBSERVABILITY.md) for required logs, metrics, freshness objectives, alerts, and OpenTelemetry boundaries.
+See the [Observability Notes](OBSERVABILITY.md) for current health, readiness, freshness, logging, and telemetry limitations.
 
 ## Related Guides
 
 - [API Reference](API-REFERENCE.md): consumer-facing HTTP contract.
-- [Release Guide](RELEASE.md): project-owned image and Kubernetes resource release process.
-- [Security Guide](SECURITY.md): security controls and trust boundaries.
-- [Observability Guide](OBSERVABILITY.md): operational signals and alerting.
+- [Build and Deployment Workflow](RELEASE.md): local quality checks, container validation, edge deployment, and rollback limitations.
+- [Security Notes](SECURITY.md): implemented security controls and trust boundaries.
+- [Observability Notes](OBSERVABILITY.md): current operational signals and telemetry limitations.
+

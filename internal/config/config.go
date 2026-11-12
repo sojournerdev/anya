@@ -4,7 +4,6 @@ package config
 import (
 	"errors"
 	"fmt"
-	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -14,11 +13,11 @@ import (
 )
 
 const (
-	refreshIntervalEnvVar   = "AGENT_REFRESH_INTERVAL"
-	refreshTimeoutEnvVar    = "AGENT_REFRESH_TIMEOUT"
-	maxStateAgeEnvVar       = "AGENT_MAX_STATE_AGE"
-	httpListenAddressEnvVar = "AGENT_HTTP_ADDRESS"
-	providerEnvVar          = "AGENT_PROVIDER"
+	refreshIntervalEnvVar = "AGENT_REFRESH_INTERVAL"
+	refreshTimeoutEnvVar  = "AGENT_REFRESH_TIMEOUT"
+	maxStateAgeEnvVar     = "AGENT_MAX_STATE_AGE"
+	httpPortEnvVar        = "AGENT_HTTP_PORT"
+	providerEnvVar        = "AGENT_PROVIDER"
 )
 
 const (
@@ -37,8 +36,8 @@ const (
 	minimumMaxStateAge time.Duration = time.Second
 	maximumMaxStateAge time.Duration = time.Hour
 
-	// DefaultHTTPListenAddress is used when AGENT_HTTP_ADDRESS is unset.
-	DefaultHTTPListenAddress = ":8080"
+	// DefaultHTTPPort is used when AGENT_HTTP_PORT is unset.
+	DefaultHTTPPort = 8080
 )
 
 // Config contains the complete validated startup configuration.
@@ -57,7 +56,7 @@ type RefreshConfig struct {
 
 // HTTPConfig contains HTTP server settings.
 type HTTPConfig struct {
-	ListenAddress string
+	Port int
 }
 
 // Load reads, parses, defaults, and validates startup configuration.
@@ -127,8 +126,8 @@ func (c RefreshConfig) validate() error {
 }
 
 func (c HTTPConfig) validate() error {
-	if strings.TrimSpace(c.ListenAddress) == "" {
-		return errors.New("listen address is required")
+	if c.Port < 1 || c.Port > 65535 {
+		return errors.New("port must be between 1 and 65535")
 	}
 	return nil
 }
@@ -204,28 +203,20 @@ func loadDurationSetting(
 }
 
 func loadHTTPConfig() (HTTPConfig, error) {
-	listenAddress, isConfigured := os.LookupEnv(httpListenAddressEnvVar)
-	if !isConfigured || strings.TrimSpace(listenAddress) == "" {
-		return HTTPConfig{ListenAddress: DefaultHTTPListenAddress}, nil
+	portText, isConfigured := os.LookupEnv(httpPortEnvVar)
+	if !isConfigured || strings.TrimSpace(portText) == "" {
+		return HTTPConfig{Port: DefaultHTTPPort}, nil
 	}
 
-	host, portText, err := net.SplitHostPort(listenAddress)
-	if err != nil {
-		return HTTPConfig{}, fmt.Errorf(
-			`config: %s %q must be a host:port address such as ":8080": %w`,
-			httpListenAddressEnvVar,
-			listenAddress,
-			err,
-		)
-	}
-	if strings.TrimSpace(host) != host {
-		return HTTPConfig{}, fmt.Errorf(`config: %s %q must not contain surrounding whitespace`, httpListenAddressEnvVar, listenAddress)
-	}
 	port, err := strconv.Atoi(portText)
 	if err != nil || port < 1 || port > 65535 {
-		return HTTPConfig{}, fmt.Errorf(`config: %s %q must use a port between 1 and 65535`, httpListenAddressEnvVar, listenAddress)
+		return HTTPConfig{}, fmt.Errorf(
+			`config: %s %q must use a port between 1 and 65535`,
+			httpPortEnvVar,
+			portText,
+		)
 	}
-	return HTTPConfig{ListenAddress: listenAddress}, nil
+	return HTTPConfig{Port: port}, nil
 }
 
 func loadProviderKind() (provider.Kind, error) {

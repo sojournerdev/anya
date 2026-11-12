@@ -33,8 +33,8 @@ spec:
           env:
             - name: AGENT_PROVIDER
               value: nvml
-            - name: AGENT_HTTP_ADDRESS
-              value: ":8080"
+            - name: AGENT_HTTP_PORT
+              value: "8080"
             - name: AGENT_REFRESH_INTERVAL
               value: "5s"
             - name: AGENT_REFRESH_TIMEOUT

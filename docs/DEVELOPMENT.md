@@ -6,74 +6,68 @@ This guide defines the supported local development path for Anya.
 
 ## Local Development Workflow
 
-The Dev Container provides Go and repository development tools. It does not manage Kubernetes clusters, Docker sockets, or host infrastructure.
+Follow the shortest validation path that matches the change:
 
-Run Anya directly with the replay provider:
+1. **Implement the change.**
+2. **Run focused tests.** Use `make test` for package behavior; add `make race` when changing concurrency-sensitive code.
+3. **Run Anya locally.** Install the Go version specified in [`go.mod`](../go.mod). The `make dev-run` target selects the replay provider:
 
-```bash
-make dev-run
-```
+   ```bash
+   make dev-run
+   ```
 
-This is the fastest development loop. It requires no GPU, image, registry, or Kubernetes cluster.
+   This requires no GPU, image, registry, or Kubernetes cluster.
+4. **Validate the production image when container behavior is affected:**
 
-Validate the production image from the host checkout because this workflow uses Docker:
+   ```bash
+   make dev-container-smoke
+   ```
 
-```bash
-make dev-container-smoke
-```
+   This builds the image, runs it with `AGENT_PROVIDER=replay`, and checks `/readyz`, `/healthz`, and `/v1/state`. It uses a dynamically allocated host port.
+5. **Inspect the replay container manually when needed:**
 
-This builds the image, runs it with `AGENT_PROVIDER=replay`, and checks `/readyz`, `/healthz`, and `/v1/state`.
+   ```bash
+   make dev-container-run
+   curl http://localhost:8080/v1/state
+   ```
 
-Run the replay container on host port `8080` when you want to inspect it manually:
+   Override the host port with `make dev-container-run DEV_PORT=9090`.
+6. **Run the complete quality gate before submitting:**
 
-```bash
-make dev-container-run
-curl http://localhost:8080/v1/state
-```
+   ```bash
+   make ci
+   ```
 
-Override the host port when needed:
+## Edge Deployment Workflow
 
-```bash
-make dev-container-run DEV_PORT=9090
-```
-
-The smoke-test target uses a dynamically allocated host port and should be used when a fixed port is not required.
-
-The host-side edge workflow publishes an immutable image to the configured OCI registry and deploys the Kustomize overlay to an operator-selected Kubernetes cluster:
+The edge workflow is optional local validation. It publishes a versioned image tagged with the current commit to the configured OCI registry, deploys the Kustomize overlay to an operator-selected Kubernetes cluster, waits for rollout, and verifies the service:
 
 ```bash
 make edge-up
 ```
 
-The host must provide Docker, `kubectl`, and access to the configured OCI registry and Kubernetes context. Configure the deployment context and image repository in `.env`.
+Use this only when the change requires edge or Kubernetes validation. The development host must provide Docker, `kubectl`, access to the configured OCI registry, and a configured Kubernetes context and image repository in `.env`. The cluster must be able to pull the published image and satisfy the runtime requirements in [`docs/OPERATOR-GUIDE.md`](OPERATOR-GUIDE.md).
 
 ## Replay Provider
 
-The application selects the provider with one environment variable:
+`make dev-run`, `make dev-container-run`, and `make dev-container-smoke` use `AGENT_PROVIDER=replay` through the `DEV_PROVIDER` Make variable. Override it only when validating another provider:
 
 ```bash
-AGENT_PROVIDER=replay
+make dev-run DEV_PROVIDER=nvml
 ```
 
-The replay provider uses the embedded `healthy` fixture and cycles through its observations. It does not require NVIDIA libraries or a GPU.
+The replay provider reads the embedded `healthy` fixture and cycles through its observations. It assigns monotonically increasing sequence numbers as observations are returned, so repeated runs provide a deterministic provider path without requiring NVIDIA libraries, a physical GPU, or GPU hardware access.
 
-`AGENT_PROVIDER` defaults to `nvml`. The replay provider is a development and test tool. Production deployments use the NVML provider.
+Use replay for:
 
-## Development Environment
+- fast local development with repeatable input;
+- unit and integration tests that must run without GPU hardware;
+- container smoke tests that validate startup and HTTP behavior;
+- exercising health, readiness, and snapshot-serving behavior.
 
-The development environment provides pinned Go tooling and the commands used by the repository workflow. It does not require a physical NVIDIA GPU for unit tests, static checks, or replay-container validation.
+Replay does not validate NVML integration, NVIDIA drivers, container GPU access, or real device behavior. Use the edge workflow and the requirements in [`docs/OPERATOR-GUIDE.md`](OPERATOR-GUIDE.md) for those checks.
 
-GPU-provider behavior is tested with fakes and replay fixtures. A real NVIDIA GPU is required for the edge-node integration path.
-
-## Quality Gate
-
-Run the complete quality gate before submitting a change:
-
-```bash
-make ci
-```
-
-The gate checks formatting, module consistency, builds, static analysis, race-enabled tests, dependency vulnerabilities, and lint.
+`AGENT_PROVIDER` defaults to `nvml`. Replay is a development and test provider; production deployments use the NVML provider.
 
 ## Container Smoke Test
 
@@ -84,5 +78,3 @@ The container smoke test checks that the production image:
 - Returns an available replay state.
 
 The test removes the temporary container after success or failure.
-
-The edge workflow verifies the Kubernetes deployment against the operator-selected cluster.

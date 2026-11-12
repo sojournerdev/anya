@@ -11,16 +11,16 @@ import (
 )
 
 // NewServer creates the read-only HTTP server for agent state and probes.
-func NewServer(nodeAgent *agent.Agent, maxStateAge time.Duration) (*http.Server, error) {
+func NewServer(nodeAgent *agent.Agent, policy agent.Policy) (*http.Server, error) {
 	if nodeAgent == nil {
 		return nil, errors.New("app: agent is required")
 	}
-	if maxStateAge <= 0 {
+	if policy.MaxStateAge <= 0 {
 		return nil, errors.New("app: maximum state age must be positive")
 	}
 
 	return &http.Server{
-		Handler:           newHTTPRoutes(nodeAgent, maxStateAge),
+		Handler:           newHTTPRoutes(nodeAgent, policy),
 		ReadHeaderTimeout: 2 * time.Second,
 		WriteTimeout:      5 * time.Second,
 		IdleTimeout:       30 * time.Second,
@@ -32,10 +32,10 @@ type agentStateHandler struct {
 	policy    agent.Policy
 }
 
-func newHTTPRoutes(nodeAgent *agent.Agent, maxStateAge time.Duration) http.Handler {
+func newHTTPRoutes(nodeAgent *agent.Agent, policy agent.Policy) http.Handler {
 	handler := agentStateHandler{
 		nodeAgent: nodeAgent,
-		policy:    agent.Policy{MaxStateAge: maxStateAge},
+		policy:    policy,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", handler.serveHealth)
@@ -70,12 +70,7 @@ func (h agentStateHandler) serveState(writer http.ResponseWriter, _ *http.Reques
 		writeJSONResponse(
 			writer,
 			http.StatusServiceUnavailable,
-			errorResponse{
-				Error: apiError{
-					Code:    stateErrorCode(evaluation.Reason()),
-					Message: stateErrorMessage(evaluation.Reason()),
-				},
-			},
+			errorResponse{Error: stateError(evaluation.Reason())},
 		)
 		return
 	}
@@ -99,18 +94,17 @@ const (
 	stateErrorMessageStale       = "GPU state is older than the configured maximum age"
 )
 
-func stateErrorCode(reason agent.Reason) string {
+func stateError(reason agent.Reason) apiError {
 	if reason == agent.ReasonStaleSnapshot {
-		return stateErrorCodeStale
+		return apiError{
+			Code:    stateErrorCodeStale,
+			Message: stateErrorMessageStale,
+		}
 	}
-	return stateErrorCodeUnavailable
-}
-
-func stateErrorMessage(reason agent.Reason) string {
-	if reason == agent.ReasonStaleSnapshot {
-		return stateErrorMessageStale
+	return apiError{
+		Code:    stateErrorCodeUnavailable,
+		Message: stateErrorMessageUnavailable,
 	}
-	return stateErrorMessageUnavailable
 }
 
 type probeResponse struct {
