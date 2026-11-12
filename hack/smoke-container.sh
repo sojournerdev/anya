@@ -2,6 +2,7 @@
 set -u
 image=${1:-}
 requested_port=${2:-0}
+: "${AGENT_PROVIDER:?AGENT_PROVIDER must be set}"
 host_address=127.0.0.1
 container_port=8080
 container_id=''
@@ -36,7 +37,7 @@ start_container() {
 	if [ "$requested_port" = "0" ]; then
 		if container_id=$(docker run --detach \
 			--publish "${host_address}::${container_port}" \
-			--env AGENT_PROVIDER=replay \
+			--env AGENT_PROVIDER="$AGENT_PROVIDER" \
 			"$image"); then
 			:
 		else
@@ -52,7 +53,7 @@ start_container() {
 	else
 		if container_id=$(docker run --detach \
 			--publish "${host_address}:${requested_port}:${container_port}" \
-			--env AGENT_PROVIDER=replay \
+			--env AGENT_PROVIDER="$AGENT_PROVIDER" \
 			"$image"); then
 			:
 		else
