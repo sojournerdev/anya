@@ -144,7 +144,7 @@ jobs:
             ghcr.io/sojournerdev/anya:main
             ghcr.io/sojournerdev/anya:sha-${{ github.sha }}
           annotations: |
-            type=manifest,org.opencontainers.image.description=Publishes validated NVIDIA GPU state over HTTP for GPU-aware workloads
+            type=index,org.opencontainers.image.description=Publishes validated NVIDIA GPU state over HTTP for GPU-aware workloads
           build-args: |
             IMAGE_REVISION=${{ github.sha }}
             IMAGE_SOURCE=https://github.com/${{ github.repository }}
