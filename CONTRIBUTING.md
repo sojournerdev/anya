@@ -11,17 +11,16 @@ Install or enable the following before contributing:
 | [Docker Engine](https://docs.docker.com/engine/) with [Buildx](https://docs.docker.com/reference/cli/docker/buildx/) support | Build and smoke-test the container image. |
 | [`make`](https://www.gnu.org/software/make/) | Run repository workflows. |
 
-See [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) for the supported development environment and workflow-specific requirements.
+See [`docs/development.md`](docs/development.md) for the supported development environment and workflow-specific requirements.
 
-Kubernetes validation is optional for contributors. It requires [`kubectl`](https://kubernetes.io/docs/reference/kubectl/), access to an operator-selected cluster, and the credentials described in `docs/OPERATOR-GUIDE.md`.
+Kubernetes validation is optional for contributors. It requires [`kubectl`](https://kubernetes.io/docs/reference/kubectl/), access to an operator-selected cluster, and the credentials described in `docs/operator-guide.md`.
 
 ## Development Workflow
 
-1. Read [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) for the supported local workflow and environment requirements.
-2. Make the smallest change that solves the problem.
-3. Add or update behavior-focused tests when runtime behavior changes.
-4. Run the validation appropriate to the change, then run `make ci` before opening a change for review.
-5. Update the relevant source-of-truth document when a user-visible contract changes.
+1. Make the smallest change that solves the problem.
+2. Add or update behavior-focused tests when runtime behavior changes.
+3. Run the validation appropriate to the change before opening it for review.
+4. Update the relevant source-of-truth document when a user-visible contract changes.
 
 ## Commit Messages
 
@@ -63,13 +62,7 @@ feat(api)!: replace the state response
 
 Update documentation when changing an API endpoint, configuration variable, deployment value, image contract, deployment workflow, failure mode, security setting, or operator procedure.
 
-Use these sources of truth:
-
-- `README.md`: project context and navigation.
-- `docs/DEVELOPMENT.md`: local development workflow.
-- `docs/API-REFERENCE.md`: HTTP contract for consumers.
-- `docs/OPERATOR-GUIDE.md`: deployment and operator procedures.
-- `CONTRIBUTING.md`: repository contribution workflow.
+Keep guidance in its audience-specific guide and link to it instead of copying it. Keep the [README documentation table](README.md#documentation) current when adding or removing guides. The OpenAPI specification is canonical for HTTP paths, methods, statuses, schemas, and examples; use API Semantics for cross-cutting behavior that the contract cannot express clearly.
 
 ## Pull Request Expectations
 

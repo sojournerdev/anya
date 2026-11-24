@@ -6,24 +6,6 @@ This document is the source of truth for Anya image builds, GitHub Container Reg
 
 The project is in early development. Published images are development artifacts, not stable releases. API behavior, configuration, image contents, and Kubernetes resources may change without compatibility guarantees.
 
-## Validation
-
-Run the repository quality gate with:
-
-```bash
-make ci
-```
-
-For container behavior, run:
-
-```bash
-make dev-container-smoke
-```
-
-The smoke test uses the replay provider and does not require a GPU or Kubernetes cluster.
-
-GitHub Actions runs these validations for pull requests and pushes to `main`. A successful push to `main` may publish the development image.
-
 ## Development Images
 
 The image repository is:
@@ -32,7 +14,7 @@ The image repository is:
 ghcr.io/sojournerdev/anya
 ```
 
-Successful `main` builds receive both tags:
+GitHub Actions publishes both tags after required CI validation succeeds on pushes to `main`:
 
 ```text
 ghcr.io/sojournerdev/anya:main
@@ -50,15 +32,7 @@ The image is currently published for `linux/amd64`.
 
 The supported Kubernetes interface is the Kustomize overlay under `deploy/k8s/`. No Helm chart or automated release manifest is shipped.
 
-The image and Kustomize resources form a compatibility pair. Operators should record the image tag and digest used with each deployment and verify rollout, readiness, and state behavior after changes.
-
-The host-side edge workflow remains available for local or operator-managed validation:
-
-```bash
-make edge-up
-```
-
-It builds a local image, publishes it to the configured registry, applies the rendered Kustomize overlay, waits for the DaemonSet rollout, and verifies the service. It is not a stable release or promotion workflow.
+The image and Kustomize resources form a compatibility pair. See the [Operator Guide](operator-guide.md) for deployment and verification procedures.
 
 ## Future Versioned Releases
 

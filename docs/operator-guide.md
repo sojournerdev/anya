@@ -2,9 +2,9 @@
 
 ## Scope
 
-Anya is a node agent for a single NVIDIA GPU on an edge node. It publishes validated GPU state over HTTP so trusted consumers can make GPU-aware decisions.
+Anya is a node agent that exposes a read-only HTTP API for validated NVIDIA GPU state on single-GPU edge nodes.
 
-This guide describes how operators select, deploy, and verify a development image. Image tags and release maturity are defined in the [Build and Image Distribution](RELEASE.md) document.
+This guide describes how operators select, deploy, and verify a development image. Image tags and release maturity are defined in the [Build and Image Distribution](release.md) document.
 
 ## Ownership Model
 
@@ -43,7 +43,7 @@ The deployment uses `kubectl` and Kustomize. The Makefile publishes images with 
 
 Use `ghcr.io/sojournerdev/anya:sha-<commit>` for repeatable cluster validation. The `main` tag is a moving development image and should be reserved for disposable environments. Do not use either tag as a stable production release.
 
-Review [Build and Image Distribution](RELEASE.md) for the image policy. The image and Kustomize resources form a compatibility pair.
+Review [Build and Image Distribution](release.md) for the image policy. The image and Kustomize resources form a compatibility pair.
 
 ## Deployment
 
@@ -62,15 +62,7 @@ make edge-rollout
 make edge-verify
 ```
 
-Individual stages are available:
-
-```bash
-make edge-build
-make edge-publish
-make edge-deploy
-make edge-rollout
-make edge-verify
-```
+For local image work, `make edge-build` builds the image; `make edge-publish` builds and pushes it.
 
 The image repository and Kubernetes context are configured through `.env`:
 
@@ -98,7 +90,6 @@ Invalid configuration prevents startup. The process exits before provider or HTT
 Use `/healthz` for liveness and `/readyz` for readiness. Liveness confirms that the HTTP process is serving requests. Readiness confirms that Anya has a fresh, valid GPU snapshot.
 
 The pod remains unready until the first successful observation. A snapshot that exceeds `AGENT_MAX_STATE_AGE` is no longer served as usable state.
-
 
 ## Verification
 
@@ -140,15 +131,11 @@ Check the image reference, registry pull credentials, Kustomize overlay, node se
 
 Compare `published_at` with the current time. A growing age usually indicates failed observations or pod restarts. Check logs, readiness, and restart counts together.
 
-### Health is degraded or unhealthy
-
-Treat `availability` and `health` separately. An available snapshot is not necessarily healthy. Consumers define policy for `degraded` and `unhealthy` states.
-
 ## Upgrades and Rollbacks
 
 Before an upgrade:
 
-1. Review the [Build and Image Distribution](RELEASE.md).
+1. Review the [Build and Image Distribution](release.md).
 2. Confirm the image is available in the registry.
 3. Confirm that the cluster can pull the image.
 4. Review the Kustomize overlay and environment values.
@@ -160,15 +147,14 @@ If the rollout fails, inspect DaemonSet status, pod events, and logs. Restore th
 
 ## Security and Resource Expectations
 
-The application API has no authentication or authorization layer. The repository does not ship a NetworkPolicy; operators must provide network isolation if required.
-
-See the [Security Notes](SECURITY.md) for the Kubernetes hardening controls and security limitations.
+Before exposing the service, provide any required network isolation. See the [Security Notes](security.md) for the authentication boundary and Kubernetes hardening details.
 
 ## Observability
 
-See the [Observability Notes](OBSERVABILITY.md) for current health, readiness, freshness, logging, and telemetry limitations.
+See the [Observability Notes](observability.md) for current health, readiness, freshness, logging, and telemetry limitations.
 
 ## Related Guides
 
-- [API Reference](API-REFERENCE.md): consumer-facing HTTP contract.
-- [Build and Image Distribution](RELEASE.md): image validation, GHCR distribution, development tags, and release maturity.
+- [API Contract](../api/openapi.yaml): canonical machine-readable HTTP contract.
+- [API Semantics](api-semantics.md): state lifecycle, health, and compatibility behavior.
+- [Build and Image Distribution](release.md): image validation, GHCR distribution, development tags, and release maturity.

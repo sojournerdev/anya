@@ -38,17 +38,20 @@ Follow the shortest validation path that matches the change:
    make ci
    ```
 
-## Edge Deployment Workflow
+## OpenAPI Contract and Reference
 
-The edge workflow is optional local or operator-managed validation. It builds a commit-tagged image, publishes it to the configured OCI registry, deploys the Kustomize overlay to a selected Kubernetes cluster, waits for rollout, and verifies the service:
+The canonical API contract is [`openapi.yaml`](../api/openapi.yaml). Run `make openapi-check` to validate it. `make openapi-docs` runs that check and generates a local HTML reference:
 
 ```bash
-make edge-up
+make openapi-docs
+open .generated/api/index.html
 ```
 
-Use this only when the change requires edge or Kubernetes validation. The development host must provide Docker, `kubectl`, access to the configured OCI registry, and a configured Kubernetes context and image repository in `.env`. The cluster must be able to pull the published image and satisfy the runtime requirements in [`docs/OPERATOR-GUIDE.md`](OPERATOR-GUIDE.md).
+Generation requires Docker; it does not start Anya or require a listening port.
 
-The CI-published GHCR image policy and development tag meanings are defined in [`docs/RELEASE.md`](RELEASE.md). This local workflow is not a stable release or promotion process.
+## Cluster Validation
+
+For Kubernetes deployment and edge validation, follow the [Operator Guide](operator-guide.md), which owns the deployment procedure.
 
 ## Replay Provider
 
@@ -67,16 +70,7 @@ Use replay for:
 - container smoke tests that validate startup and HTTP behavior;
 - exercising health, readiness, and snapshot-serving behavior.
 
-Replay does not validate NVML integration, NVIDIA drivers, container GPU access, or real device behavior. Use the edge workflow and the requirements in [`docs/OPERATOR-GUIDE.md`](OPERATOR-GUIDE.md) for those checks.
+Replay does not validate NVML integration, NVIDIA drivers, container GPU access, or real device behavior. Use the edge workflow and the requirements in [`operator-guide.md`](operator-guide.md) for those checks.
 
 `AGENT_PROVIDER` defaults to `nvml`. Replay is a development and test provider; production deployments use the NVML provider.
 
-## Container Smoke Test
-
-The container smoke test checks that the container image:
-
-- Starts without GPU access.
-- Serves the readiness and health endpoints.
-- Returns an available replay state.
-
-The test removes the temporary container after success or failure.

@@ -7,16 +7,12 @@ on:
   pull_request:
   workflow_dispatch:
 
-concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 permissions:
   contents: read
 
 jobs:
-  code-quality:
-    name: Validate code quality
+  ci:
+    name: CI checks
     runs-on: ubuntu-24.04
     steps:
       - name: Check out repository
@@ -28,93 +24,43 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Run static checks
-        run: make static-checks
+      - name: Check Go formatting
+        run: make fmt-check
 
-  unit-tests:
-    name: Run unit tests
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - name: Check Go module consistency
+        run: make mod-tidy-check
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
+      - name: Verify module checksums
+        run: make mod-verify
+
+      - name: Run go vet
+        run: make vet
+
+      - name: Run golangci-lint
+        run: make lint
+
+      - name: Validate OpenAPI contract
+        run: make openapi-check
 
       - name: Run unit tests
         run: make test
 
-  race-tests:
-    name: Run race tests
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-
       - name: Run race tests
         run: make race
 
-  build-go:
-    name: Build Go packages
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Build packages
+      - name: Build Go packages
         run: make build
 
-  scan-dependencies:
-    name: Scan dependencies
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - name: Check dependencies for vulnerabilities
+        run: make vuln
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-          cache: true
-
-      - name: Run dependency security checks
-        run: make security-checks
-
-  test-container:
-    name: Test container behavior
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-
-      - name: Run container smoke test
+      - name: Smoke-test container image
         run: make dev-container-smoke
 
   publish-main-image:
-    name: Publish main image
+    name: Publish development image
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs:
-      - code-quality
-      - unit-tests
-      - race-tests
-      - build-go
-      - scan-dependencies
-      - test-container
+    needs: ci
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -123,7 +69,7 @@ jobs:
       - name: Check out tested commit
         uses: actions/checkout@v4
 
-      - name: Log in to GHCR
+      - name: Authenticate to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -142,7 +88,7 @@ jobs:
           tags: |
             ghcr.io/sojournerdev/anya:main
             ghcr.io/sojournerdev/anya:sha-${{ github.sha }}
-          outputs: type=image,name=ghcr.io/sojournerdev/anya,push=true,annotation-index.org.opencontainers.image.description=Publishes validated NVIDIA GPU state over HTTP for GPU-aware workloads
+          outputs: type=image,name=ghcr.io/sojournerdev/anya,push=true,annotation-index.org.opencontainers.image.description=Anya is a node agent that exposes a read-only HTTP API for validated NVIDIA GPU state on single-GPU edge nodes. Applications use this state to make hardware-aware decisions; workload and placement policies remain with consumers.
           build-args: |
             IMAGE_REVISION=${{ github.sha }}
             IMAGE_SOURCE=https://github.com/${{ github.repository }}

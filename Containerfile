@@ -40,7 +40,7 @@ ARG IMAGE_VERSION
 ARG IMAGE_CREATED
 
 LABEL org.opencontainers.image.title="Anya" \
-      org.opencontainers.image.description="Publishes validated NVIDIA GPU state over HTTP for GPU-aware workloads" \
+      org.opencontainers.image.description="Anya is a node agent that exposes a read-only HTTP API for validated NVIDIA GPU state on single-GPU edge nodes. Applications use this state to make hardware-aware decisions; workload and placement policies remain with consumers." \
       org.opencontainers.image.url="https://github.com/sojournerdev/anya" \
       org.opencontainers.image.source=$IMAGE_SOURCE \
       org.opencontainers.image.documentation="https://github.com/sojournerdev/anya/tree/main/docs" \
