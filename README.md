@@ -6,8 +6,6 @@
   </picture>
 </p>
 
-<h1 align="center">Anya</h1>
-
 <p align="center">A GPU State API for Single-GPU Edge Nodes</p>
 
 <p align="center">
@@ -21,8 +19,8 @@ Anya is a node agent that exposes a read-only HTTP API for validated NVIDIA GPU 
 
 > [!WARNING]
 > **Early development:** Anya is not production-ready. APIs, configuration, and
-> deployment behavior may change without notice. Use only for development,
-> testing, and homelab validation.
+> deployment behavior may change without notice. Use only for development and
+> testing.
 
 ## Goals
 
@@ -53,7 +51,7 @@ Anya is a node agent that exposes a read-only HTTP API for validated NVIDIA GPU 
 - [ ] Expand GPU health and hardware awareness
 - [ ] Assess PCIe and CUDA capabilities
 - [ ] Support workload-specific hardware suitability decisions
-- [ ] Validate behavior on real homelab GPU nodes
+- [ ] Validate on a Kubernetes cluster with NVIDIA GPU nodes
 - [ ] Establish release and promotion practices
 
 ## Documentation
