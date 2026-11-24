@@ -1,3 +1,21 @@
-.tools/
-.env
+# Go binaries and compiled test binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+
+# Local Go workspace files
+/go.work
+/go.work.sum
+
+# Local environment configuration (template: .env.example)
+/.env
+
+# Repository-local tools and generated output
+/.tools/
+/.generated/
+
+# macOS metadata
 .DS_Store

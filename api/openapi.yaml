@@ -1,0 +1,273 @@
+openapi: 3.2.1
+info:
+  title: Anya Node Agent API
+  version: 0.1.0
+  description: |
+    Anya is a node agent that exposes a read-only HTTP API for validated NVIDIA
+    GPU state on single-GPU edge nodes. Applications use this state to make
+    hardware-aware decisions; workload and placement policies remain with
+    consumers.
+  x-logo:
+    url: https://raw.githubusercontent.com/sojournerdev/anya/main/docs/assets/anya-logo-on-light.svg
+  contact:
+    name: Anya maintainers
+    url: https://github.com/sojournerdev/anya
+  license:
+    name: MIT
+    identifier: MIT
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+security: []
+tags:
+  - name: Health
+    description: Orchestrator probes for process liveness and GPU-state readiness.
+  - name: State
+    description: Consumer endpoint for the latest validated GPU state and health assessment.
+externalDocs:
+  description: API state lifecycle, availability and health, compatibility, and security semantics
+  url: https://github.com/sojournerdev/anya/blob/main/docs/api-semantics.md
+paths:
+  /healthz:
+    get:
+      tags: [Health]
+      operationId: getHealth
+      summary: Check process liveness
+      description: |
+        Orchestrator liveness probe. A successful response confirms that the HTTP
+        process is serving requests; it does not indicate whether GPU state is
+        available.
+      responses:
+        '200':
+          description: The HTTP process is serving requests.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/ContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+              example:
+                status: ok
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+  /readyz:
+    get:
+      tags: [Health]
+      operationId: getReadiness
+      summary: Check GPU-state readiness
+      description: |
+        Orchestrator readiness probe. A successful response means fresh,
+        validated GPU state is available to serve. It does not indicate whether
+        the GPU is healthy.
+      responses:
+        '200':
+          description: A fresh, valid GPU snapshot is available.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/ContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessReadyResponse'
+              example:
+                status: ready
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '503':
+          description: No valid snapshot has been published, or the published snapshot is stale.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/ContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessNotReadyResponse'
+              example:
+                status: not_ready
+                code: gpu_observation_unavailable
+  /v1/state:
+    get:
+      tags: [State]
+      operationId: getState
+      summary: Get the latest validated GPU state
+      description: |
+        Returns Anya's latest validated GPU snapshot and its baseline health
+        assessment. Consumers use the snapshot to make hardware-aware decisions;
+        workload and placement policies remain their responsibility.
+      responses:
+        '200':
+          description: A fresh, validated GPU snapshot is available.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/ContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StateResponse'
+              example:
+                availability: available
+                health: healthy
+                published_at: '2026-01-01T12:00:00Z'
+                snapshot:
+                  sequence: 42
+                  captured_at: '2026-01-01T11:59:59Z'
+                  identity:
+                    id: GPU-example
+                    model: Example GPU
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '503':
+          description: No valid snapshot has been published, or the published snapshot exceeds `AGENT_MAX_STATE_AGE`.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/CacheControl'
+            X-Content-Type-Options:
+              $ref: '#/components/headers/ContentTypeOptions'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                unavailable:
+                  summary: No valid snapshot exists
+                  value:
+                    error:
+                      code: state_unavailable
+                      message: GPU state is temporarily unavailable; the agent is retrying automatically
+                stale:
+                  summary: The published snapshot is too old
+                  value:
+                    error:
+                      code: state_stale
+                      message: GPU state is older than the configured maximum age
+components:
+  headers:
+    CacheControl:
+      description: Responses must not be cached.
+      schema:
+        type: string
+        enum: [no-store]
+    ContentTypeOptions:
+      description: Prevents MIME type sniffing.
+      schema:
+        type: string
+        enum: [nosniff]
+  responses:
+    MethodNotAllowed:
+      description: The HTTP method is not supported for this endpoint.
+      headers:
+        Allow:
+          description: Comma-separated methods accepted by this endpoint.
+          schema:
+            type: string
+          example: 'GET, HEAD'
+        X-Content-Type-Options:
+          $ref: '#/components/headers/ContentTypeOptions'
+      content:
+        text/plain:
+          schema:
+            type: string
+          example: "Method Not Allowed\n"
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          description: Indicates that the HTTP process is serving requests.
+          enum: [ok]
+    ReadinessReadyResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          description: Indicates that a fresh, valid GPU snapshot is available.
+          enum: [ready]
+    ReadinessNotReadyResponse:
+      type: object
+      required: [status, code]
+      properties:
+        status:
+          type: string
+          description: Indicates that no fresh, valid GPU snapshot is available.
+          enum: [not_ready]
+        code:
+          type: string
+          description: Reason readiness is unavailable.
+          enum: [gpu_observation_unavailable]
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/APIError'
+    APIError:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Machine-readable reason for unavailable state.
+          enum: [state_unavailable, state_stale]
+        message:
+          type: string
+          description: Human-readable description of the unavailable state.
+    StateResponse:
+      type: object
+      required: [availability, health, published_at, snapshot]
+      properties:
+        availability:
+          type: string
+          description: Indicates that a fresh, valid state is available.
+          enum: [available]
+        health:
+          type: string
+          description: |
+            Baseline health assessment for the published snapshot. Currently, all
+            validated snapshots are reported as healthy; hardware-specific health
+            checks are not implemented.
+          enum: [healthy]
+        published_at:
+          type: string
+          format: date-time
+          description: Time at which Anya published the current snapshot.
+        snapshot:
+          description: Latest validated GPU observation.
+          $ref: '#/components/schemas/Snapshot'
+    Snapshot:
+      type: object
+      required: [sequence, captured_at, identity]
+      properties:
+        sequence:
+          type: integer
+          minimum: 0
+          maximum: 18446744073709551615
+          description: Unsigned 64-bit observation sequence number; increases for each accepted observation.
+        captured_at:
+          type: string
+          format: date-time
+          description: Capture time reported by the GPU observation.
+        identity:
+          description: GPU identity reported by the observation.
+          $ref: '#/components/schemas/Identity'
+    Identity:
+      type: object
+      required: [id, model]
+      properties:
+        id:
+          type: string
+          description: GPU identifier.
+        model:
+          type: string
+          description: GPU model name.

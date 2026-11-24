@@ -10,10 +10,16 @@ TOOL_ARCH := $(shell go env GOARCH)
 
 GOVULNCHECK_VERSION := v1.9.0
 GOLANGCI_LINT_VERSION := v2.15.0
+KIN_OPENAPI_VERSION := v0.153.0
 
 GOVULNCHECK := $(TOOLS_DIR)/govulncheck-$(GOVULNCHECK_VERSION)-$(TOOL_OS)-$(TOOL_ARCH)
 GOLANGCI_LINT := $(TOOLS_DIR)/golangci-lint-$(GOLANGCI_LINT_VERSION)-$(TOOL_OS)-$(TOOL_ARCH)
+KIN_OPENAPI := $(TOOLS_DIR)/kin-openapi-$(KIN_OPENAPI_VERSION)-$(TOOL_OS)-$(TOOL_ARCH)
 TOOL_INSTALL_DIR := $(TOOLS_DIR)/.install
+
+OPENAPI_SPEC := api/openapi.yaml
+OPENAPI_DOCS_DIR ?= .generated/api
+REDOCLY_VERSION := 2.83.0
 
 .PHONY: help
 
@@ -47,7 +53,7 @@ fmt-check: ## Verify Go source formatting
 fix: ## Apply standard Go fixes
 	go fix ./...
 
-.PHONY: mod-tidy mod-tidy-check mod-verify vuln lint static-checks security-checks ci
+.PHONY: mod-tidy mod-tidy-check mod-verify vuln lint openapi-check openapi-docs static-checks security-checks ci
 
 ##@ Quality
 
@@ -66,7 +72,22 @@ vuln: tools ## Run govulncheck
 lint: tools ## Run golangci-lint
 	$(GOLANGCI_LINT) run
 
-static-checks: fmt-check mod-tidy-check mod-verify vet lint ## Run formatting, dependency, vet, and lint checks
+openapi-check: $(KIN_OPENAPI) ## Validate the OpenAPI contract
+	$(KIN_OPENAPI) \
+		-defaults=true \
+		-examples=true \
+		-patterns=true \
+		$(OPENAPI_SPEC)
+
+openapi-docs: openapi-check ## Generate a standalone HTML API reference from the OpenAPI contract
+	mkdir -p "$(OPENAPI_DOCS_DIR)"
+	docker run --rm \
+		--volume "$(CURDIR):/work:ro" \
+		--volume "$(CURDIR)/$(OPENAPI_DOCS_DIR):/out" \
+		redocly/cli:$(REDOCLY_VERSION) \
+		build-docs "/work/$(OPENAPI_SPEC)" --output "/out/index.html"
+
+static-checks: fmt-check mod-tidy-check mod-verify vet lint openapi-check ## Run formatting, dependency, vet, lint, and OpenAPI checks
 
 tests: test race ## Run unit and race tests
 
@@ -80,6 +101,7 @@ DEV_IMAGE ?= anya:dev
 DEV_PORT ?= 8080
 DEV_SMOKE_PORT ?= 0
 DEV_PROVIDER ?= replay
+
 ##@ Development
 
 dev-run: ## Run Anya locally with the development provider
@@ -166,6 +188,12 @@ $(GOLANGCI_LINT):
 	mkdir -p "$(TOOL_INSTALL_DIR)"
 	GOBIN="$(abspath $(TOOL_INSTALL_DIR))" go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 	mv "$(TOOL_INSTALL_DIR)/golangci-lint" "$@"
+	rm -rf "$(TOOL_INSTALL_DIR)"
+
+$(KIN_OPENAPI):
+	mkdir -p "$(TOOL_INSTALL_DIR)"
+	GOBIN="$(abspath $(TOOL_INSTALL_DIR))" go install github.com/getkin/kin-openapi/cmd/validate@$(KIN_OPENAPI_VERSION)
+	mv "$(TOOL_INSTALL_DIR)/validate" "$@"
 	rm -rf "$(TOOL_INSTALL_DIR)"
 
 clean-tools: ## Remove local tools

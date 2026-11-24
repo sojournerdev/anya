@@ -2,7 +2,7 @@
 
 ## Security Boundary
 
-Anya exposes a read-only decision API for trusted cluster consumers. The application does not provide authentication or authorization.
+The API is read-only and does not provide authentication or authorization.
 
 The repository does not ship a `NetworkPolicy`. Operators must provide network isolation if the service requires restricted access. Do not expose the service publicly without an approved authentication and transport-security design.
 
@@ -22,9 +22,7 @@ The Kubernetes DaemonSet configures Anya with:
 
 ## Image and Build Security
 
-Development images are published to GHCR by GitHub Actions after the CI validation jobs pass on `main`. The image tags and their stability guarantees are defined in the [Build and Image Distribution](RELEASE.md) document.
-
-The base container images are pinned by digest. CI runs `govulncheck` against Go dependencies. The repository does not currently generate or verify image signatures, SBOMs, provenance attestations, or registry image-scan results.
+The base container images are pinned by digest, and CI runs `govulncheck` against Go dependencies. Image distribution and remaining supply-chain controls are tracked in the [Build and Image Distribution](release.md) guide.
 
 Operators are responsible for registry access, image-pull permissions, and any admission policy that requires signed or digest-pinned images.
 
