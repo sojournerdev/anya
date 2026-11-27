@@ -23,6 +23,7 @@ type Provider interface {
 	// Observe returns one normalized sample or an error.
 	Observe(ctx context.Context) (gpu.Observation, error)
 
-	// Close releases provider resources.
+	// Close releases provider resources once. It is safe to call repeatedly;
+	// every call returns the result of the first close attempt.
 	Close() error
 }
