@@ -23,6 +23,7 @@ type Provider struct {
 	identity gpu.Identity
 	sequence uint64
 	closed   bool
+	closeErr error
 }
 
 var _ provider.Provider = (*Provider)(nil)
@@ -89,18 +90,21 @@ func (p *Provider) Observe(ctx context.Context) (gpu.Observation, error) {
 	return p.collectObservation(p.sequence), nil
 }
 
-// Close releases the NVML library. It is idempotent.
+// Close releases the NVML library once and returns the result of that attempt
+// on every call.
 func (p *Provider) Close() error {
 	p.mutex.Lock()
 	defer p.mutex.Unlock()
+
 	if p.closed {
-		return nil
+		return p.closeErr
 	}
 	p.closed = true
 	if returnCode := p.api.Shutdown(); returnCode != nvml.SUCCESS && returnCode != nvml.ERROR_UNINITIALIZED {
-		return nvmlError("shutdown NVML", returnCode)
+		p.closeErr = fmt.Errorf("close NVML provider: %w", nvmlError("shutdown", returnCode))
 	}
-	return nil
+
+	return p.closeErr
 }
 
 func (p *Provider) collectObservation(sequence uint64) gpu.Observation {

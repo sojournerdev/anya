@@ -177,7 +177,8 @@ func evaluatePublishedState(publishedState state, now time.Time, policy Policy) 
 	}
 }
 
-// Close prevents future refreshes and releases provider resources.
+// Close prevents future refreshes and releases provider resources once.
+// Repeated calls return the result of the first close attempt.
 func (a *Agent) Close() error {
 	a.operationMu.Lock()
 	defer a.operationMu.Unlock()
@@ -187,6 +188,7 @@ func (a *Agent) Close() error {
 	}
 	a.closed = true
 	a.closeErr = a.provider.Close()
+
 	return a.closeErr
 }
 

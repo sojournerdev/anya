@@ -3,12 +3,13 @@ package agent_test
 import (
 	"context"
 	"errors"
+	"testing"
+	"time"
+
 	"github.com/sojournerdev/anya/internal/agent"
 	"github.com/sojournerdev/anya/internal/gpu"
 	"github.com/sojournerdev/anya/internal/health"
 	"github.com/sojournerdev/anya/internal/provider/fake"
-	"testing"
-	"time"
 )
 
 func TestRefreshPublishesNewerStateAndPreservesLastStateAfterFailure(t *testing.T) {
